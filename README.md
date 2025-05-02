@@ -22,14 +22,14 @@ MATH sample questions and solutions for few-shot prompting: 'example.zip'
 
 ---
 
-## 2. MATH Dataset Zero-Shot Train and Test Sets Generation (SLURM)
-First unzip the MATH Dataset and the sample questions and solutions for few-shot prompting, and then generate baseline solutions for both training and testing. 
+## 2. MATH Dataset Train and Test Sets Generation (SLURM)
+First unzip the MATH Dataset and the sample questions and solutions for few-shot prompting, and then generate baseline solutions for training and different solutions from three different prompts for testing. 
 
 ```bash
-sbatch run_MATH_baseline.slurm
+sbatch run_MATH_train_test.slurm
 ```
 
-* **Script:** `MATH_baseline.py`
+* **Script:** `MATH_train_test.py`
 
 
 ## 3. Training (SLURM)
@@ -45,33 +45,9 @@ sbatch run_train_RL.slurm
   * `detector_sft/` (detector SFT checkpoint)
   * `saved_detector_rl/` (detector RL checkpoint)
 
-
 ---
 
-## 4. MATH Test Set Few-Shot Generation
-
-After training, generate few-shot solutions for the MATH test set to make inference harder.
-
-### 4.1 Few-Shot Prompting
-
-```bash
-sbatch run_MATH_test_fewshot.slurm
-```
-
-* **Script:** `MATH_test_fewshot.py`
-
-
-### 4.2 Few-Shot + Prompt Engineering
-
-```bash
-sbatch run_MATH_test_prompt_engineering.slurm
-```
-
-* **Script:** `MATH_test_prompt_engineering.py`
-
----
-
-## 5. NaturalProofs Solution Generation
+## 4. NaturalProofs Solution Generation
 
 Generate proofs on the NaturalProofs dataset via Deepseek under three conditions:
 
@@ -83,9 +59,9 @@ sbatch run_naturalproofs_inference.slurm
 
 ---
 
-## 6. Detector Inference & Evaluation
+## 5. Detector Inference & Evaluation
 
-### 6.1 Apply Detector to MATH Outputs
+### 5.1 Apply Detector to MATH Outputs
 
 ```bash
 sbatch run_inference.slurm
@@ -94,18 +70,18 @@ sbatch run_inference.slurm
 * **Script:** `inference.py`
 * **Output:** `detector_inference.npz` (logits/scores for each MATH test set solution from each detector model)
 
-### 6.2 Apply Detector to NaturalProofs Outputs
+### 5.2 Apply Detector to NaturalProofs Outputs
 
 ```bash
 sbatch run_eval_naturalproofs.slurm
 ```
 
 * **Script:** `eval_naturalproofs.py`
-* **Output:** `naturalproofs_detector_inference.npz` (logits/scores for each NaturalProof problem from each detector model)
+* **Output:** `naturalproofs_detector_inference.npz` (logits/scores for each NaturalProofs problem from each detector model)
 
 ---
 
-## 7. Analysis & Plotting
+## 6. Analysis & Plotting
 
 Use the Jupyter notebooks for final metrics and visualizations:
 
