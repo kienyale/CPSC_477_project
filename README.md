@@ -13,7 +13,7 @@ conda activate ai-detectors
 pip install \
   torch==2.1.1+cu118 torchvision==0.16.1+cu118 torchaudio==2.1.1+cu118 \
   transformers==4.31.0 datasets==2.14.5 peft==0.5.0 sentence-transformers==2.2.2 \
-  scikit-learn==1.3.2 pandas==2.1.1 numpy==2.2.5 matplotlib==3.8.0
+  scikit-learn==1.3.2 pandas==2.1.1 numpy==2.2.5 matplotlib==3.8.0 accelerate==1.6.0
 ````
 
 Data files are: 
