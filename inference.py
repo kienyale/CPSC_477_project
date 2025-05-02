@@ -1,12 +1,110 @@
-#!/usr/bin/env python3
-# evaluate_and_save_detectors.py
+import torch
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from transformers import (
+    AutoTokenizer,
+    AutoModelForSequenceClassification
+)
+from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
+from sklearn.calibration import calibration_curve
+
+import ast
+import pandas as pd
+
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Using device:", DEVICE)
+
+
+# ┌────────────────────────────────────────────────────────────────────────┐
+# │ Cell 2: Load Tokenizers & Models                                      │
+# └────────────────────────────────────────────────────────────────────────┘
+tokenizer_detector = AutoTokenizer.from_pretrained("detector_baseline", trust_remote_code=True)
+
+def build_aligned_longform_from_MATH(
+    input_path: str = "LLM_generated_MATH.csv",
+) -> pd.DataFrame:
+    """
+    Reads the CSV from LLM_generated_MATHs,
+    aligns generated answers once per doc_id,
+    and collects all human variants per doc.
+    """
+    # 1) Load data
+    df = pd.read_csv(input_path, index_col=False)
+
+    # 2) Parse composite ID into tuple, extract doc_id
+    def parse_id(x):
+        if isinstance(x, str):
+            tup = tuple(ast.literal_eval(x))
+        else:
+            tup = tuple(x) if isinstance(x, (list, tuple)) else (x,)
+        return tup
+
+    df['ID_parsed'] = df['ID'].apply(parse_id)
+    # first element is the document identifier
+    df['doc_id'] = df['ID_parsed'].apply(lambda t: t[0])
+
+    # 3) Rename columns
+    df = df.rename(columns={
+        'Problem': 'prompt',
+        'zeroshot': 'ans_base',
+        'fewshot': 'ans_few',
+        'fewshot2': 'ans_hard',
+        'ground_truth': 'ans_human'
+    })
+
+    # 4) Drop exact duplicates
+    df = df.drop_duplicates(subset=['doc_id','prompt','ans_base','ans_few','ans_hard','ans_human'], keep='first')
+
+    # 5) Group by doc_id + generated answers to collect all human variants
+    grouped = (
+        df
+        .groupby(['doc_id','prompt','ans_base','ans_few','ans_hard'], dropna=False)
+        .agg({'ans_human': list})
+        .reset_index()
+    )
+
+    # 6) Build long form
+    rows = []
+    for _, r in grouped.iterrows():
+        doc = r['doc_id']
+        prompt = r['prompt']
+        # generated (label=0)
+        rows.append({'doc_id': doc, 'prompt': prompt, 'variant': 'baseline',           'text': r['ans_base'], 'label': 0})
+        rows.append({'doc_id': doc, 'prompt': prompt, 'variant': 'few_shot',           'text': r['ans_few'],  'label': 0})
+        rows.append({'doc_id': doc, 'prompt': prompt, 'variant': 'prompt_engineering','text': r['ans_hard'], 'label': 0})
+        # human variants (label=1)
+        for human_text in r['ans_human']:
+            rows.append({'doc_id': doc, 'prompt': prompt, 'variant': 'human', 'text': human_text, 'label': 1})
+
+    long_df = pd.DataFrame(rows)
+    print(f"🎯 Expanded to {len(long_df)} rows ({len(grouped)} docs × (3 generated + N human variants))")
+    return long_df
+
+
+df_long = build_aligned_longform_from_MATH()
+df_long.to_csv("aligned_MATH_longform.csv", index=False)
+
+
+df_long = df_long.dropna(subset=["text"]).reset_index(drop=True)
+
+test_dfp = df_long.copy()
+
+
+# robust_inference_detectors.py
+
+import transformers, peft
+print("transformers:", transformers.__version__)
+print("peft:       ", peft.__version__)
+
 
 import os
 from collections import OrderedDict
 
-import numpy as np
-import pandas as pd
 import torch
+import numpy
 from transformers import (
     AutoConfig,
     AutoTokenizer,
@@ -14,177 +112,137 @@ from transformers import (
 )
 from peft import PeftModel
 
-def build_aligned_longform(
-    baseline_path="test_baseline.csv",
-    few_shot_path="test_debug_all.csv",
-    harder_path="test_harder_debug_test.csv",
-):
-    """
-    Reads in three CSVs of AI‐generated and human answers,
-    aligns them on 'problem', and returns a long‐form DataFrame
-    with one row per (question, variant).
-    """
-    baseline = pd.read_csv(baseline_path)
-    few_shot = pd.read_csv(few_shot_path)
-    harder   = pd.read_csv(harder_path)
+# 1) Device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"[INFO] Running on {device}")
 
-    # drop duplicate (id,problem) in harder
-    harder = harder.drop_duplicates(subset=["id","problem"], keep="first")
+# 2) Prepare test set
+#    Must define test_dfp with columns ["text","label"] before importing this script
+texts  = test_dfp["text"].astype(str).tolist()
+labels = test_dfp["label"].astype(int).to_numpy()
+N      = len(texts)
 
-    baseline = baseline.rename(columns={"generated_answer":"ans_base"})
-    few_shot = few_shot.rename(columns=   {"generated_answer":"ans_few"})
-    harder   = harder.rename(columns=     {"generated_answer":"ans_hard"})
+# 3) Checkpoint definitions
+MODEL_ORDER = ["Baseline", "SFT‑LoRA", "RL‑Detector"]
+DET_CKPTS = OrderedDict([
+    ("Baseline",    "Qwen/Qwen2.5-1.5B"),
+    ("SFT‑LoRA",    "detector_sft"),       # directory with LoRA adapters only
+    ("RL‑Detector", "saved_detector_rl"),  # directory with full model weights
+])
 
-    merged = (
-        few_shot[["problem","id","ans_few"]]
-        .merge(baseline[["problem","type","level","ground_truth","ans_base"]],
-               on="problem", how="inner")
-        .merge(harder[  ["problem","ans_hard"]],
-               on="problem", how="inner")
-    )
-    print(f"✅ Aligned {len(merged)} questions")
+# 4) Shared tokenizer & base config
+tokenizer = AutoTokenizer.from_pretrained(
+    "Qwen/Qwen2.5-1.5B", trust_remote_code=True
+)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
 
-    rows=[]
-    for _,r in merged.iterrows():
-        rows += [
-          {"id":r.id, "prompt":r.problem, "variant":"baseline",
-           "type":r.type, "level":r.level,
-           "text":r.ans_base, "label":0},
-          {"id":r.id, "prompt":r.problem, "variant":"few_shot",
-           "type":r.type, "level":r.level,
-           "text":r.ans_few,  "label":0},
-          {"id":r.id, "prompt":r.problem, "variant":"harder",
-           "type":r.type, "level":r.level,
-           "text":r.ans_hard, "label":0},
-          {"id":r.id, "prompt":r.problem, "variant":"human",
-           "type":r.type, "level":r.level,
-           "text":r.ground_truth,"label":1},
-        ]
-    df = pd.DataFrame(rows)
-    print(f"🎯 Expanded to {len(df)} rows ({len(merged)}×4)")
-    return df
+base_cfg = AutoConfig.from_pretrained(
+    "Qwen/Qwen2.5-1.5B", trust_remote_code=True
+)
+base_cfg.num_labels   = 2
+base_cfg.pad_token_id = tokenizer.pad_token_id
 
-def predict_detector(model, texts, tokenizer, device,
-                     batch_size=16, max_len=256):
+# 5) Inference kwargs
+#    - Baseline & SFT‑LoRA load base in FP32, then apply LoRA if needed
+#    - RL‑Detector load full model in FP32
+LOAD_KWARGS = dict(
+    config            = base_cfg,
+    trust_remote_code = True,
+    torch_dtype       = torch.float32,
+    device_map        = None,            # force .to(device) below
+    low_cpu_mem_usage = False,
+)
+
+# 6) Batched inference helper
+def predict_detector(model, texts, tokenizer, batch_size=16, max_len=256):
     model.to(device).eval()
-    all_p, all_q, all_l = [], [], []
+    all_preds, all_probs, all_logits = [], [], []
     for i in range(0, len(texts), batch_size):
-        batch = texts[i:i+batch_size]
-        enc = tokenizer(batch,
-                        return_tensors="pt",
-                        padding="longest",
-                        truncation=True,
-                        max_length=max_len).to(device)
+        batch = texts[i : i + batch_size]
+        enc   = tokenizer(
+            batch,
+            return_tensors="pt",
+            padding="longest",
+            truncation=True,
+            max_length=max_len,
+        ).to(device)
         with torch.no_grad():
-            logits = model(**enc).logits           # (B,2) FP32
-            probs  = torch.softmax(logits,dim=-1)[:,1]
-            preds  = (probs>=0.5).long().cpu().numpy()
-        all_p.append(preds)
-        all_q.append(probs.cpu().numpy())
-        all_l.append(logits.cpu().numpy())
+            logits = model(**enc).logits            # (B,2) FP32
+            probs  = torch.softmax(logits, dim=-1)[:,1]
+            preds  = (probs >= 0.5).long().cpu().numpy()
+        all_preds.append(preds)
+        all_probs.append(probs.cpu().numpy())
+        all_logits.append(logits.cpu().numpy())
+        # clean up
         del enc, logits, probs, preds
         torch.cuda.empty_cache()
-    return (np.concatenate(all_p),
-            np.concatenate(all_q),
-            np.concatenate(all_l,axis=0))
-
-if __name__=="__main__":
-    # 1) Build / load test set
-    test_dfp = build_aligned_longform(
-        "test_baseline.csv",
-        "test_debug_all.csv",
-        "test_harder_debug_test.csv"
-    ).dropna(subset=["text"]).reset_index(drop=True)
-
-    texts  = test_dfp["text"].astype(str).tolist()
-    labels = test_dfp["label"].astype(int).to_numpy()
-    N      = len(texts)
-
-    # 2) Detector checkpoints
-    MODEL_ORDER = ["Baseline","SFT‑LoRA","RL‑Detector"]
-    DET_CKPTS = OrderedDict([
-      ("Baseline",    "Qwen/Qwen2.5-1.5B"),
-      ("SFT‑LoRA",    "detector_sft"),
-      ("RL‑Detector", "saved_detector_rl"),
-    ])
-
-    # 3) shared tokenizer + config
-    tokenizer = AutoTokenizer.from_pretrained(
-        "Qwen/Qwen2.5-1.5B", trust_remote_code=True
-    )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    base_cfg = AutoConfig.from_pretrained(
-        "Qwen/Qwen2.5-1.5B", trust_remote_code=True
-    )
-    base_cfg.num_labels   = 2
-    base_cfg.pad_token_id = tokenizer.pad_token_id
-
-    LOAD_KWARGS = dict(
-        config            = base_cfg,
-        trust_remote_code = True,
-        torch_dtype       = torch.float32,
-        device_map        = None,
-        low_cpu_mem_usage = False,
+    return (
+        np.concatenate(all_preds,  axis=0),
+        np.concatenate(all_probs,  axis=0),
+        np.concatenate(all_logits, axis=0),
     )
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"[INFO] Running on {device}")
+# 7) Load & evaluate each detector
+preds_dict, probs_dict, logits_dict = {}, {}, {}
 
-    # 4) Inference loop
-    from peft import PeftModel
+for name in MODEL_ORDER:
+    ckpt = DET_CKPTS[name]
+    print(f"\n→ Loading {name:12s}…", end=" ")
 
-    preds_dict, probs_dict, logits_dict = {},{},{}
-    for name in MODEL_ORDER:
-        ck = DET_CKPTS[name]
-        print(f"\n→ Loading {name:12s}…", end=" ")
+    if name == "Baseline":
+        model = AutoModelForSequenceClassification.from_pretrained(
+            ckpt,
+            **LOAD_KWARGS
+        )
+    elif name == "SFT‑LoRA":
+        # load base + attach PEFT adapters
+        base = AutoModelForSequenceClassification.from_pretrained(
+            "Qwen/Qwen2.5-1.5B",
+            **LOAD_KWARGS
+        )
+        model = PeftModel.from_pretrained(
+            base,
+            ckpt,
+            torch_dtype       = torch.float32,
+            device_map        = None,
+            local_files_only  = True,
+        )
+    else:  # RL‑Detector
+        model = AutoModelForSequenceClassification.from_pretrained(
+            ckpt,
+            **LOAD_KWARGS
+        )
 
-        if name=="Baseline":
-            model = AutoModelForSequenceClassification.from_pretrained(ck, **LOAD_KWARGS)
+    print("✅  ", end="")
+    # ensure on correct device & dtype
+    model.to(device)
+    print(f"Predicting with {name:12s}…", end=" ")
 
-        elif name=="SFT‑LoRA":
-            base = AutoModelForSequenceClassification.from_pretrained(
-                "Qwen/Qwen2.5-1.5B", **LOAD_KWARGS
-            )
-            model = PeftModel.from_pretrained(
-                base, ck,
-                torch_dtype      = torch.float32,
-                device_map       = None,
-                local_files_only = True
-            )
+    p, q, l = predict_detector(model, texts, tokenizer)
+    preds_dict [name] = p
+    probs_dict [name] = q
+    logits_dict[name] = l
 
-        else:  # RL‑Detector
-            model = AutoModelForSequenceClassification.from_pretrained(ck, **LOAD_KWARGS)
+    print("done")
 
-        print("✅ ", end="")
-        model.to(device)
-        print(f"Predicting with {name:12s}…", end=" ")
+    # teardown
+    del model
+    if name == "SFT‑LoRA":
+        del base
+    torch.cuda.empty_cache()
 
-        p,q,l = predict_detector(model, texts, tokenizer, device)
-        preds_dict [name] = p
-        probs_dict [name] = q
-        logits_dict[name] = l
-        print("done")
+# 8) Summary
+print(f"\n✅ Evaluated {N} examples:")
+for name in MODEL_ORDER:
+    acc = (preds_dict[name][:N] == labels).mean()
+    print(f"  {name:12s} → acc = {acc*100:5.2f}%")
 
-        del model
-        if name=="SFT‑LoRA": del base
-        torch.cuda.empty_cache()
-
-    # 5) Report & save
-    print(f"\n✅ Evaluated {N} examples:")
-    for name in MODEL_ORDER:
-        acc = (preds_dict[name][:N]==labels).mean()*100
-        print(f"  {name:12s} →  ACC = {acc:5.2f}%")
-
-    os.makedirs("results", exist_ok=True)
-    # long‐form CSV
-    test_dfp.to_csv("results/test_dfp_longform_labeled.csv", index=False)
-    # preds / probs / logits
-    np.savez(
-      "results/detector_inference.npz",
-      **{f"{m}_preds":  preds_dict [m] for m in MODEL_ORDER},
-      **{f"{m}_probs":  probs_dict [m] for m in MODEL_ORDER},
-      **{f"{m}_logits": logits_dict[m] for m in MODEL_ORDER},
-    )
-    print("\n🎉 Finished — saved everything under ./results/")
+# 9) Save outputs for downstream analysis
+np.savez(
+    "detector_inference.npz",
+    **{f"{m}_preds":  preds_dict[m]  for m in MODEL_ORDER},
+    **{f"{m}_probs":  probs_dict[m]  for m in MODEL_ORDER},
+    **{f"{m}_logits": logits_dict[m] for m in MODEL_ORDER},
+)
+print("Saved detector_inference.npz")
