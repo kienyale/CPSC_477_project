@@ -16,7 +16,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Pytorch version is: ", torch.__version__)
 print("You are using: ", DEVICE)
 
-"""unzip the MATH dataset and MATH reference examples for few-shot prompting"""
+"""Expand MATH dataset and the sample questions and solutions for few-shot prompting"""
 
 import zipfile
 
@@ -31,6 +31,8 @@ extract_dir = "./data"
 
 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
     zip_ref.extractall(extract_dir)
+
+"""Load DeepSeek and datasets"""
 
 model = AutoModelForCausalLM.from_pretrained(
     "deepseek-ai/deepseek-math-7b-instruct",
@@ -122,14 +124,30 @@ results_df.to_csv(
     header=not os.path.exists(csv_path)
 )
 
-"""Generate test dataset on MATH Dataset with baseline zero-shot prompting"""
+"""Three different prompts for MATH test dataset"""
 
-def generate_answer(problem_text):
+tokenizer.pad_token = tokenizer.eos_token
+tokenizer.padding_side = "left" 
+
+def zeroshot(problem_text):
     prompt = f"""Solve the problem step by step. Use $$ or $$$$ for LaTex. Put the final answer in \\boxed{{}}.
 
+### Problem:
+ {problem_text}
+
+### Solution:"""
+    inputs = tokenizer(prompt, return_tensors="pt",padding=True).to(model.device)
+    outputs = model.generate(**inputs,pad_token_id=tokenizer.eos_token_id,  max_new_tokens=2048)
+    full_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    solution = full_response.split("### Solution:")[-1].strip()
+    return solution
+
+def few_shot(problem_text, reference):
+    prompt = f"""Here are some sample questions and sample soutions: {reference}
+    Solve the following problem in a similar style to these examples, and put the final answer in \\boxed{{}}.
 
 ### Problem:
-{problem_text}
+ {problem_text}
 
 ### Solution:"""
     inputs = tokenizer(prompt, return_tensors="pt",padding=True).to(model.device)
@@ -141,26 +159,52 @@ def generate_answer(problem_text):
     return solution
 
 
+def fewshot2(problem_text, sample):
+    prompt = f"""
+    Analyze and understand the mathematical writing style of these human written solutions: {sample}
+    
+    You are a patient math tutor. Using the references above, solve the following problem in a clear, human‑like mathematical writing style by:
+    1. Proceeding step‐by‐step with full‐sentence explanations.
+    2. Making sure your solution is concise and similar in length to the human written solutions.
+    3. Boxing your final answer with \\boxed{{}}.
+    
+    ### Problem:
+    {problem_text}
+    
+    ### Solution:
+    """
+
+    inputs = tokenizer(prompt, return_tensors="pt",padding=True).to(model.device)
+    outputs = model.generate(**inputs,pad_token_id=tokenizer.eos_token_id,  max_new_tokens=2048)
+    full_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    solution = full_response.split("### Solution:")[-1].strip()
+    return solution
+
+
 results = []
-for example in tqdm(dataset["test"]):
-    try:
-        generated_answer = generate_answer(example["problem"])
-        results.append({
-            "problem": example["problem"],
-            "type": example["type"],
-            "level": example["level"],
-            "generated_answer": generated_answer,
-            "ground_truth": example['solution']
-        })
-    except Exception as e:
-        print(f"Failed on {example['type']} problem: {str(e)}")
+for example in tqdm(dataset["train"]):
+    problem = example["Problem"]
+    reference = samples[example['type']]
+    fs = fewshot(problem, reference)
+    zs = zeroshot(problem)
+    fs2 = fewshot2(problem, reference)
+    print(fs)
+    results.append({
+        "problem": example["problem"],
+        "type": example["type"],
+        "level": example["level"],
+        "fewshot": fs,
+        "zeroshot": zs,
+        "fewshot2":fs2,
+        "ground_truth": example['Solution']  
+    })
 
 results_df = pd.DataFrame(results)
-csv_path = "test_baseline.csv"
+csv_path = "LLM_generated_MATH.csv"
 
 results_df.to_csv(
     csv_path,
-    mode='a',
+    mode='a',      
     index=False,
-    header=not os.path.exists(csv_path)
+    header=not os.path.exists(csv_path) 
 )
