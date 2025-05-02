@@ -121,3 +121,46 @@ results_df.to_csv(
     index=False,
     header=not os.path.exists(csv_path)
 )
+
+"""Generate test dataset on MATH Dataset with baseline zero-shot prompting"""
+
+def generate_answer(problem_text):
+    prompt = f"""Solve the problem step by step. Use $$ or $$$$ for LaTex. Put the final answer in \\boxed{{}}.
+
+
+### Problem:
+{problem_text}
+
+### Solution:"""
+    inputs = tokenizer(prompt, return_tensors="pt",padding=True).to(model.device)
+    outputs = model.generate(**inputs,pad_token_id=tokenizer.eos_token_id,  max_new_tokens=2048)
+    full_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    solution = full_response.split("### Solution:")[-1].strip()
+    solution = re.sub(r'\s*\n\s*', ' ', solution)
+    solution = re.sub(r'\s+', ' ', solution)
+    return solution
+
+
+results = []
+for example in tqdm(dataset["test"]):
+    try:
+        generated_answer = generate_answer(example["problem"])
+        results.append({
+            "problem": example["problem"],
+            "type": example["type"],
+            "level": example["level"],
+            "generated_answer": generated_answer,
+            "ground_truth": example['solution']
+        })
+    except Exception as e:
+        print(f"Failed on {example['type']} problem: {str(e)}")
+
+results_df = pd.DataFrame(results)
+csv_path = "test_baseline.csv"
+
+results_df.to_csv(
+    csv_path,
+    mode='a',
+    index=False,
+    header=not os.path.exists(csv_path)
+)
