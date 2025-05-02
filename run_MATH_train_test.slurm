@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=MATH_baseline
-#SBATCH --output=MATH_%j.out
+#SBATCH --job-name=MATH_train_test
+#SBATCH --output=MATH_train_test%j.out
 #SBATCH --partition=education_gpu
 #SBATCH --time=15:00:00                   # 1 hour max
 #SBATCH --nodes=1
@@ -19,4 +19,4 @@ module load python/3.10
 source ~/myenv/bin/activate myenv
 
 # Run the smoke test
-srun python MATH_baseline.py
+srun python MATH_train_test.py

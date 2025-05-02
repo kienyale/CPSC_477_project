@@ -13,7 +13,7 @@ conda activate ai-detectors
 pip install \
   torch==2.1.1+cu118 torchvision==0.16.1+cu118 torchaudio==2.1.1+cu118 \
   transformers==4.31.0 datasets==2.14.5 peft==0.5.0 sentence-transformers==2.2.2 \
-  scikit-learn==1.3.2 pandas==2.1.1 numpy==2.2.5 matplotlib==3.8.0
+  scikit-learn==1.3.2 pandas==2.1.1 numpy==2.2.5 matplotlib==3.8.0 accelerate==1.6.0
 ````
 
 Data files are: 
@@ -114,33 +114,3 @@ jupyter nbconvert --execute MATH_evaluation_analyses.ipynb
 jupyter nbconvert --execute NaturalProofs_evaluation_analyses.ipynb
 ```
 
----
-
-## 8. Directory Overview
-
-```text
-CPSC_477_project/
-├── MATH_baseline.py
-├── train_RL.py
-├── MATH_test_fewshot.py
-├── MATH_test_prompt_engineering.py
-├── inference_naturalproofs.py
-├── inference.py
-├── eval_naturalproofs.py
-├── run_MATH_baseline.slurm
-├── run_train_RL.slurm
-├── run_MATH_test_fewshot.slurm
-├── run_naturalproofs_inference.slurm
-├── run_inference.slurm
-├── run_eval_naturalproofs.slurm
-├── data.zip
-├── example.zip
-├── math_test_fewshot.out
-├── math_test_prompt_engineering.out
-├── naturalproofs_inference_*.out
-├── detector_inference.npz
-├── naturalproofs_detector_inference.npz
-├── MATH_evaluation_analyses.ipynb
-├── NaturalProofs_evaluation_analyses.ipynb
-└──run_MATH_test_prompt_engineering.slurm
-```
