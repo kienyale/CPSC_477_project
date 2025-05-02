@@ -16,16 +16,23 @@ pip install \
   scikit-learn==1.3.2 pandas==2.1.1 numpy==2.2.5 matplotlib==3.8.0
 ````
 
-Data files should reside under:
-
-```
-data/MATH/train.csv
-data/math/test.csv
-```
+Data files are: 
+MATH Dataset: 'dataset.zip'
+MATH sample questions and solutions for few-shot prompting: 'example.zip'
 
 ---
 
-## 2. Training (SLURM)
+## 2. MATH Dataset Zero-Shot Train and Test Generation (SLURM)
+First unzip the MATH Dataset and the sample questions and solutions for few-shot prompting, and then generate baseline solutions for both training and testing. 
+
+```bash
+sbatch run_MATH_baseline.slurm
+```
+
+* **Script:** `MATH_baseline.py`
+
+
+## 3. Training (SLURM)
 
 To train both SFT humanizer and SFT detector models, then perform Adversarial Reinforcement Learning:
 
@@ -41,11 +48,11 @@ sbatch run_train_RL.slurm
 
 ---
 
-## 3. MATH Test Set Generation
+## 4. MATH Test Set Few-Shot Generation
 
-After training, generate solutions for the MATH test set to make inference harder.
+After training, generate few-shot solutions for the MATH test set to make inference harder.
 
-### 3.1 Few-Shot Prompting
+### 4.1 Few-Shot Prompting
 
 ```bash
 sbatch run_MATH_test_fewshot.slurm
@@ -54,7 +61,7 @@ sbatch run_MATH_test_fewshot.slurm
 * **Script:** `MATH_test_fewshot.py`
 
 
-### 3.2 Few-Shot + Prompt Engineering
+### 4.2 Few-Shot + Prompt Engineering
 
 ```bash
 sbatch run_MATH_test_prompt_engineering.slurm
@@ -64,7 +71,7 @@ sbatch run_MATH_test_prompt_engineering.slurm
 
 ---
 
-## 4. NaturalProofs Solution Generation
+## 5. NaturalProofs Solution Generation
 
 Generate proofs on the NaturalProofs dataset via Deepseek under three conditions:
 
@@ -76,9 +83,9 @@ sbatch run_naturalproofs_inference.slurm
 
 ---
 
-## 5. Detector Inference & Evaluation
+## 6. Detector Inference & Evaluation
 
-### 5.1 Apply Detector to MATH Outputs
+### 6.1 Apply Detector to MATH Outputs
 
 ```bash
 sbatch run_inference.slurm
@@ -87,7 +94,7 @@ sbatch run_inference.slurm
 * **Script:** `inference.py`
 * **Output:** `detector_inference.npz` (logits/scores for each MATH test set solution from each detector model)
 
-### 5.2 Apply Detector to NaturalProofs Outputs
+### 6.2 Apply Detector to NaturalProofs Outputs
 
 ```bash
 sbatch run_eval_naturalproofs.slurm
@@ -98,7 +105,7 @@ sbatch run_eval_naturalproofs.slurm
 
 ---
 
-## 6. Analysis & Plotting
+## 7. Analysis & Plotting
 
 Use the Jupyter notebooks for final metrics and visualizations:
 
@@ -109,24 +116,25 @@ jupyter nbconvert --execute NaturalProofs_evaluation_analyses.ipynb
 
 ---
 
-## 7. Directory Overview
+## 8. Directory Overview
 
 ```text
 CPSC_477_project/
+├── MATH_baseline.py
 ├── train_RL.py
 ├── MATH_test_fewshot.py
 ├── MATH_test_prompt_engineering.py
 ├── inference_naturalproofs.py
 ├── inference.py
 ├── eval_naturalproofs.py
+├── run_MATH_baseline.slurm
 ├── run_train_RL.slurm
 ├── run_MATH_test_fewshot.slurm
 ├── run_naturalproofs_inference.slurm
 ├── run_inference.slurm
 ├── run_eval_naturalproofs.slurm
-├── data/
-│   ├── math/train.csv
-│   ├── math/test.csv
+├── data.zip
+├── example.zip
 ├── math_test_fewshot.out
 ├── math_test_prompt_engineering.out
 ├── naturalproofs_inference_*.out
