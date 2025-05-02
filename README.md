@@ -114,33 +114,3 @@ jupyter nbconvert --execute MATH_evaluation_analyses.ipynb
 jupyter nbconvert --execute NaturalProofs_evaluation_analyses.ipynb
 ```
 
----
-
-## 8. Directory Overview
-
-```text
-CPSC_477_project/
-├── MATH_baseline.py
-├── train_RL.py
-├── MATH_test_fewshot.py
-├── MATH_test_prompt_engineering.py
-├── inference_naturalproofs.py
-├── inference.py
-├── eval_naturalproofs.py
-├── run_MATH_baseline.slurm
-├── run_train_RL.slurm
-├── run_MATH_test_fewshot.slurm
-├── run_naturalproofs_inference.slurm
-├── run_inference.slurm
-├── run_eval_naturalproofs.slurm
-├── data.zip
-├── example.zip
-├── math_test_fewshot.out
-├── math_test_prompt_engineering.out
-├── naturalproofs_inference_*.out
-├── detector_inference.npz
-├── naturalproofs_detector_inference.npz
-├── MATH_evaluation_analyses.ipynb
-├── NaturalProofs_evaluation_analyses.ipynb
-└──run_MATH_test_prompt_engineering.slurm
-```
