@@ -22,7 +22,7 @@ MATH sample questions and solutions for few-shot prompting: 'example.zip'
 
 ---
 
-## 2. MATH Dataset Zero-Shot Train and Test Generation (SLURM)
+## 2. MATH Dataset Zero-Shot Train and Test Sets Generation (SLURM)
 First unzip the MATH Dataset and the sample questions and solutions for few-shot prompting, and then generate baseline solutions for both training and testing. 
 
 ```bash
