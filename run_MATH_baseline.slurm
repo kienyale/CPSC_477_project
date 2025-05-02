@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=MATH_baseline
-#SBATCH --output=MATH_%j.out
+#SBATCH --output=MATH_baseline%j.out
 #SBATCH --partition=education_gpu
 #SBATCH --time=15:00:00                   # 1 hour max
 #SBATCH --nodes=1
