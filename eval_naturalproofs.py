@@ -1,6 +1,3 @@
-# ┌────────────────────────────────────────────────────────────────────────┐
-# │ Cell 1: Imports & Setup                                               │
-# └────────────────────────────────────────────────────────────────────────┘
 import torch
 import numpy as np
 import pandas as pd
@@ -17,27 +14,24 @@ import ast
 import pandas as pd
 
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("Using device:", DEVICE)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Using device:", device)
 
-
-# ┌────────────────────────────────────────────────────────────────────────┐
-# │ Cell 2: Load Tokenizers & Models                                      │
-# └────────────────────────────────────────────────────────────────────────┘
+# load tokenizers and models
 tokenizer_detector = AutoTokenizer.from_pretrained("detector_baseline", trust_remote_code=True)
 
 def build_aligned_longform_from_naturalproofs(
     input_path: str = "LLM_generated_naturalproofs.csv",
 ) -> pd.DataFrame:
     """
-    Reads the CSV from LLM_generated_naturalproofs,
+    reads the csv from llm_generated_naturalproofs,
     aligns generated answers once per doc_id,
     and collects all human variants per doc.
     """
-    # 1) Load data
+    # load data
     df = pd.read_csv(input_path, index_col=False)
 
-    # 2) Parse composite ID into tuple, extract doc_id
+    # parse composite id into tuple and extract doc_id
     def parse_id(x):
         if isinstance(x, str):
             tup = tuple(ast.literal_eval(x))
@@ -49,7 +43,7 @@ def build_aligned_longform_from_naturalproofs(
     # first element is the document identifier
     df['doc_id'] = df['ID_parsed'].apply(lambda t: t[0])
 
-    # 3) Rename columns
+    # rename columns
     df = df.rename(columns={
         'Problem': 'prompt',
         'zeroshot': 'ans_base',
@@ -58,10 +52,10 @@ def build_aligned_longform_from_naturalproofs(
         'ground_truth': 'ans_human'
     })
 
-    # 4) Drop exact duplicates
+    # drop exact duplicates
     df = df.drop_duplicates(subset=['doc_id','prompt','ans_base','ans_few','ans_hard','ans_human'], keep='first')
 
-    # 5) Group by doc_id + generated answers to collect all human variants
+    # group by doc_id and generated answers to collect all human variants
     grouped = (
         df
         .groupby(['doc_id','prompt','ans_base','ans_few','ans_hard'], dropna=False)
@@ -69,7 +63,7 @@ def build_aligned_longform_from_naturalproofs(
         .reset_index()
     )
 
-    # 6) Build long form
+    # build long form
     rows = []
     for _, r in grouped.iterrows():
         doc = r['doc_id']
@@ -83,7 +77,7 @@ def build_aligned_longform_from_naturalproofs(
             rows.append({'doc_id': doc, 'prompt': prompt, 'variant': 'human', 'text': human_text, 'label': 1})
 
     long_df = pd.DataFrame(rows)
-    print(f"🎯 Expanded to {len(long_df)} rows ({len(grouped)} docs × (3 generated + N human variants))")
+    print(f"🎯 expanded to {len(long_df)} rows ({len(grouped)} docs × (3 generated + n human variants))")
     return long_df
 
 
@@ -102,7 +96,6 @@ import transformers, peft
 print("transformers:", transformers.__version__)
 print("peft:       ", peft.__version__)
 
-
 import os
 from collections import OrderedDict
 
@@ -115,25 +108,25 @@ from transformers import (
 )
 from peft import PeftModel
 
-# 1) Device
+# device setup
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"[INFO] Running on {device}")
+print(f"[info] running on {device}")
 
-# 2) Prepare test set
-#    Must define test_dfp with columns ["text","label"] before importing this script
+# prepare test set
+# must define test_dfp with columns ['text', 'label'] before importing this script
 texts  = test_dfp["text"].astype(str).tolist()
 labels = test_dfp["label"].astype(int).to_numpy()
 N      = len(texts)
 
-# 3) Checkpoint definitions
+# checkpoint definitions
 MODEL_ORDER = ["Baseline", "SFT‑LoRA", "RL‑Detector"]
 DET_CKPTS = OrderedDict([
     ("Baseline",    "Qwen/Qwen2.5-1.5B"),
-    ("SFT‑LoRA",    "detector_sft"),       # directory with LoRA adapters only
+    ("SFT‑LoRA",    "detector_sft"),       # directory with lora adapters only
     ("RL‑Detector", "saved_detector_rl"),  # directory with full model weights
 ])
 
-# 4) Shared tokenizer & base config
+# shared tokenizer and base config
 tokenizer = AutoTokenizer.from_pretrained(
     "Qwen/Qwen2.5-1.5B", trust_remote_code=True
 )
@@ -146,18 +139,18 @@ base_cfg = AutoConfig.from_pretrained(
 base_cfg.num_labels   = 2
 base_cfg.pad_token_id = tokenizer.pad_token_id
 
-# 5) Inference kwargs
-#    - Baseline & SFT‑LoRA load base in FP32, then apply LoRA if needed
-#    - RL‑Detector load full model in FP32
+# inference kwargs
+# - baseline & sft‑lora load base in fp32 then apply lora if needed
+# - rl‑detector load full model in fp32
 LOAD_KWARGS = dict(
     config            = base_cfg,
     trust_remote_code = True,
     torch_dtype       = torch.float32,
-    device_map        = None,            # force .to(device) below
+    device_map        = None,
     low_cpu_mem_usage = False,
 )
 
-# 6) Batched inference helper
+# batched inference helper
 def predict_detector(model, texts, tokenizer, batch_size=16, max_len=256):
     model.to(device).eval()
     all_preds, all_probs, all_logits = [], [], []
@@ -171,13 +164,12 @@ def predict_detector(model, texts, tokenizer, batch_size=16, max_len=256):
             max_length=max_len,
         ).to(device)
         with torch.no_grad():
-            logits = model(**enc).logits            # (B,2) FP32
+            logits = model(**enc).logits            # (B,2) fp32
             probs  = torch.softmax(logits, dim=-1)[:,1]
             preds  = (probs >= 0.5).long().cpu().numpy()
         all_preds.append(preds)
         all_probs.append(probs.cpu().numpy())
         all_logits.append(logits.cpu().numpy())
-        # clean up
         del enc, logits, probs, preds
         torch.cuda.empty_cache()
     return (
@@ -186,12 +178,12 @@ def predict_detector(model, texts, tokenizer, batch_size=16, max_len=256):
         np.concatenate(all_logits, axis=0),
     )
 
-# 7) Load & evaluate each detector
+# load and evaluate each detector
 preds_dict, probs_dict, logits_dict = {}, {}, {}
 
 for name in MODEL_ORDER:
     ckpt = DET_CKPTS[name]
-    print(f"\n→ Loading {name:12s}…", end=" ")
+    print(f"\n→ loading {name:12s}…", end=" ")
 
     if name == "Baseline":
         model = AutoModelForSequenceClassification.from_pretrained(
@@ -199,7 +191,7 @@ for name in MODEL_ORDER:
             **LOAD_KWARGS
         )
     elif name == "SFT‑LoRA":
-        # load base + attach PEFT adapters
+        # load base and attach peft adapters
         base = AutoModelForSequenceClassification.from_pretrained(
             "Qwen/Qwen2.5-1.5B",
             **LOAD_KWARGS
@@ -211,16 +203,15 @@ for name in MODEL_ORDER:
             device_map        = None,
             local_files_only  = True,
         )
-    else:  # RL‑Detector
+    else:  # rl‑detector
         model = AutoModelForSequenceClassification.from_pretrained(
             ckpt,
             **LOAD_KWARGS
         )
 
     print("✅  ", end="")
-    # ensure on correct device & dtype
     model.to(device)
-    print(f"Predicting with {name:12s}…", end=" ")
+    print(f"predicting with {name:12s}…", end=" ")
 
     p, q, l = predict_detector(model, texts, tokenizer)
     preds_dict [name] = p
@@ -230,22 +221,22 @@ for name in MODEL_ORDER:
     print("done")
 
     # teardown
-    del model
-    if name == "SFT‑LoRA":
-        del base
-    torch.cuda.empty_cache()
+del model
+if name == "SFT‑LoRA":
+    del base
+torch.cuda.empty_cache()
 
-# 8) Summary
-print(f"\n✅ Evaluated {N} examples:")
+# summary
+print(f"\n✅ evaluated {N} examples:")
 for name in MODEL_ORDER:
     acc = (preds_dict[name][:N] == labels).mean()
     print(f"  {name:12s} → acc = {acc*100:5.2f}%")
 
-# 9) Save outputs for downstream analysis
+# save outputs for downstream analysis
 np.savez(
     "naturalproofs_detector_inference.npz",
     **{f"{m}_preds":  preds_dict[m]  for m in MODEL_ORDER},
     **{f"{m}_probs":  probs_dict[m]  for m in MODEL_ORDER},
     **{f"{m}_logits": logits_dict[m] for m in MODEL_ORDER},
 )
-print("Saved naturalproofs_detector_inference.npz")
+print("saved naturalproofs_detector_inference.npz")

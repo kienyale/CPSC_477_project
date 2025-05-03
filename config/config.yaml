@@ -1,0 +1,60 @@
+# Paths
+paths:
+  math_dataset: "data/MATH.zip"
+  example_problems: "data/example_problems.zip"
+  processed_data: "data/processed/"
+  detector_sft: "models/detector_sft/"
+  logs: "logs/"
+
+# Model configuration
+model:
+  base_model: "microsoft/deberta-v3-large"
+  tokenizer_trust_remote_code: true
+  max_length: 512
+
+# LoRA configuration
+lora:
+  r: 8
+  lora_alpha: 32
+  target_modules: ["q_proj", "k_proj", "v_proj"]
+  lora_dropout: 0.1
+  bias: "none"
+
+# Training configuration
+training:
+  num_epochs: 3
+  batch_size: 8
+  learning_rate: 2.0e-5
+  weight_decay: 0.01
+  warmup_steps: 100
+  gradient_accumulation_steps: 4
+  max_grad_norm: 1.0
+  seed: 42
+
+# Data configuration
+data:
+  test_size: 0.2
+  random_state: 42
+  include_cols:
+    - "problem"
+    - "type"
+    - "level"
+    - "solution"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+rl:
+  num_iterations: 20
+  batch_size: 8
+  generation_max_length: 16
+  window_size: 128
+  top_p: 0.9
+
+paths:
+  humanizer_sft: "humanizer_sft"
+  detector_rl: "saved_detector_rl"
+  inference_output: "detector_inference.npz"
+  naturalproofs_output: "naturalproofs_detector_inference.npz" 

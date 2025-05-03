@@ -1,3 +1,5 @@
+
+
 import torch
 import transformers
 import ast
@@ -119,7 +121,7 @@ else:
 # 2) Iterate only new examples
 for example in tqdm(NP, desc="Generating proofs"):
     raw_id            = example["id"]            # e.g. [8570, 0]
-    doc_id, sent_idx  = raw_id                   # unpack to ints
+    doc_id, sent_idx  = raw_id                  
     
     # skip if already done
     if (doc_id, sent_idx) in processed:
