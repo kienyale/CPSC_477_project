@@ -8,7 +8,7 @@ paths:
 
 # Model configuration
 model:
-  base_model: "microsoft/deberta-v3-large"
+  base_model: "Qwen/Qwen2.5-1.5B"
   tokenizer_trust_remote_code: true
   max_length: 512
 

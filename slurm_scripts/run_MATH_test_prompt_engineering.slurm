@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=MATH_train_test
-#SBATCH --output=MATH_train_test%j.out
+#SBATCH --job-name=deepseek_smoke
+#SBATCH --output=MATH_prompt_engineering%j.out
 #SBATCH --partition=education_gpu
 #SBATCH --time=15:00:00                   # 1 hour max
 #SBATCH --nodes=1
@@ -18,5 +18,5 @@ module load python/3.10
 # Activate your virtual env (if you set one up)
 source ~/myenv/bin/activate myenv
 
-# Run the smoke test
-srun python MATH_train_test.py
+
+srun python MATH_test_prompt_engineering.py

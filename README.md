@@ -1,6 +1,6 @@
 # AI-Generated Math Solution Detector
 
-This project implements a detector model to classify between human-written and AI-generated solutions to mathematical problems. The detector is trained using supervised fine-tuning and can be further improved through reinforcement learning.
+This project implements an adversarial RL-based detector for identifying AI-generated math solutions. The detector is trained on the MATH dataset and evaluated on both MATH and NaturalProofs datasets.
 
 ## Project Structure
 
@@ -9,108 +9,104 @@ This project implements a detector model to classify between human-written and A
 ├── config/
 │   └── config.yaml         # Configuration settings
 ├── data/
-│   ├── MATH.zip           # MATH dataset
-│   └── example_problems.zip # Example problems
+│   ├── MATH/              # MATH dataset
+│   └── processed/         # Processed datasets
+├── models/
+│   ├── detector_rl/       # RL detector checkpoints
+│   └── detector_sft/      # SFT detector checkpoints
 ├── src/
-│   ├── data/
-│   │   ├── data_loader.py  # Dataset loading utilities
-│   │   └── data_processor.py # Data processing and preparation
-│   ├── models/
-│   │   └── detector.py     # Detector model implementation
-│   ├── training/
-│   │   └── trainer.py      # Training loop and utilities
-│   └── utils/
-│       ├── logging.py      # Logging configuration
-│       └── metrics.py      # Evaluation metrics
-├── train_detector.py       # Main training script
-└── requirements.txt        # Python dependencies
+│   ├── data/             # Data loading/processing
+│   ├── models/           # Model architectures
+│   ├── training/         # Training loops
+│   └── utils/            # Helper functions
+├── slurm_scripts/        # HPC job scripts
+│   └── README.md         # SLURM usage guide
+└── requirements.txt      # Python dependencies
 ```
 
-## Setup
+## Installation
 
-1. Create a virtual environment and activate it:
+1. Clone the repository:
+```bash
+git clone https://github.com/amyyhwang3/CPSC_477_project.git
+cd CPSC_477_project
+```
+
+2. Create and activate virtual environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Linux/Mac
+# or
+.\venv\Scripts\activate  # Windows
 ```
 
-2. Install dependencies:
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Prepare data:
-- Place the MATH dataset in `data/MATH.zip`
-- Place example problems in `data/example_problems.zip`
+## Usage
 
-## Configuration
+### Local Development
 
-The project uses a YAML configuration file (`config/config.yaml`) to manage all settings:
+1. Configure settings in `config/config.yaml`
 
-- Model settings (architecture, tokenizer, etc.)
-- Training parameters (learning rate, batch size, etc.)
-- Data processing settings
-- Paths for data and model artifacts
-- Logging configuration
-
-## Training
-
-To train the detector model:
-
+2. Train the detector:
 ```bash
-# Train with LoRA (recommended)
 python train_detector.py
-
-# Train without LoRA
-python train_detector.py --no-lora
 ```
 
-The training script:
-1. Loads and processes the datasets
-2. Creates train/test splits
-3. Initializes the model (optionally with LoRA)
-4. Trains the model using the configured parameters
-5. Saves the best model based on validation performance
+3. Run inference:
+```bash
+python -m src.models.detector predict \
+  --model-path models/detector_rl \
+  --input-file data/processed/test.csv \
+  --output-file detector_inference.npz
+```
 
-## Model Architecture
+### Running on HPC
 
-The detector uses the DeBERTa-v3-large model as the base architecture, with the following modifications:
+For large-scale training and evaluation, use the SLURM scripts in `slurm_scripts/`:
 
-- Binary classification head for AI/human detection
-- Optional LoRA adapters for efficient fine-tuning
-- Gradient accumulation for effective batch size scaling
-- Linear learning rate warmup
+```bash
+# Generate datasets
+sbatch slurm_scripts/run_MATH_train_test.slurm
 
-## Evaluation Metrics
+# Train RL detector
+sbatch slurm_scripts/run_train_RL.slurm
 
-The model's performance is evaluated using:
+# Run evaluations
+sbatch slurm_scripts/run_eval_naturalproofs.slurm
+```
 
-- Accuracy
-- Precision
-- Recall
-- F1 Score
-- ROC AUC
-- Confusion Matrix Statistics
+See `slurm_scripts/README.md` for detailed instructions on running HPC jobs.
 
-## Logging
+## Data
 
-Training progress and results are logged to:
-- Console output
-- Time-stamped log files in the `logs/` directory
+- **MATH Dataset**: Mathematical problems and solutions
+- **NaturalProofs**: Mathematical proofs for evaluation
+- **Processed Data**: Aligned datasets with human/AI labels
 
-## Requirements
+## Models
 
-Main dependencies:
-- PyTorch
-- Transformers
-- PEFT (Parameter-Efficient Fine-Tuning)
-- scikit-learn
-- pandas
-- PyYAML
+1. **SFT Detector**: Initial supervised fine-tuned model
+2. **RL Detector**: Adversarially trained with RL for robustness
 
-See `requirements.txt` for complete list and versions.
+## Results
+
+Analysis notebooks:
+- `MATH_evaluation_analyses.ipynb`: MATH dataset results
+- `NaturalProofs_evaluation_analyses.ipynb`: NaturalProofs results
+
+## Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/name`)
+3. Commit changes (`git commit -am 'Add feature'`)
+4. Push branch (`git push origin feature/name`)
+5. Create Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see LICENSE file for details.
 
