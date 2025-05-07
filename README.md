@@ -1,20 +1,38 @@
-# 🤖 AI-Generated Math Solution Detector
+# AI-Generated Math Solution Detector
 
-A state-of-the-art detector for identifying AI-generated mathematical solutions, trained using adversarial reinforcement learning techniques.
+A state-of-the-art detector for identifying AI-generated mathematical solutions using novel adversarial reinforcement learning techniques. Our approach significantly outperforms traditional methods across varying difficulty levels and mathematical subjects.
 
-## 📄 Research Paper
+## Research Paper
 
-[Adversarial Reinforcement Learning based Detection of AI Generated Math Solutions](Adversarial_Reinforcement_Learning_based_Detection_of_AI_Generated_Math_Solutions.pdf)
+For complete details about our methodology, experiments, and results, please refer to our research paper:
 
-## 🎯 Key Features
+[Adversarial Reinforcement Learning based Detection of AI Generated Math Solutions (PDF)](Adversarial_Reinforcement_Learning_based_Detection_of_AI_Generated_Math_Solutions.pdf)
 
-- **Advanced Detection**: Uses adversarial RL to identify AI-generated math solutions with high accuracy
-- **Robust Training**: Trained on both MATH and NaturalProofs datasets for comprehensive coverage
-- **Dual Model Architecture**: Combines SFT (Supervised Fine-Tuning) and RL-based detection
-- **HPC Ready**: Optimized for high-performance computing environments
-- **Comprehensive Evaluation**: Extensive testing on multiple mathematical domains
+## Key Results
 
-## 🏗️ Project Structure
+Our novel RL-Detector demonstrates superior performance and robustness compared to baseline methods:
+
+### Performance Across Mathematical Topics
+![NaturalProofs Analysis](results/naturalproofs_analysis.png)
+
+### Sensitivity Analysis
+![Sensitivity Analysis](results/sensitivity_analysis.png)
+
+### Key Findings
+
+- **Difficulty Robustness**: Maintains 85% accuracy on Level 5 problems (vs 78% for SFT-LoRA)
+- **Subject Coverage**: Achieves uniformly high accuracy across mathematical subjects, with 10-12 percentage point improvements in challenging areas like Precalculus
+- **Reduced False Positives**: Decreases false-positive rate from 13-17% to 8-11% on AI outputs
+- **Solution Verification**: 96% accuracy on verifiably correct solutions, 91% on incorrect ones
+
+## Technical Approach
+
+Our method combines:
+1. Supervised Fine-Tuning with LoRA (SFT-LoRA) for initial training
+2. Adversarial Reinforcement Learning for robustness enhancement
+3. Specialized detection mechanisms for mathematical reasoning verification
+
+## Project Structure
 
 ```
 .
@@ -36,7 +54,7 @@ A state-of-the-art detector for identifying AI-generated mathematical solutions,
 └── requirements.txt      # Python dependencies
 ```
 
-## 🚀 Quick Start
+## Installation
 
 1. Clone the repository:
 ```bash
@@ -54,56 +72,29 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
-3. Configure settings in `config/config.yaml`
-
-4. Run inference:
-```bash
-python -m src.models.detector predict \
-  --model-path models/detector_rl \
-  --input-file data/processed/test.csv \
-  --output-file detector_inference.npz
-```
-
-## 💻 Usage
+## Usage
 
 ### Local Development
 
-1. Train the detector:
-```bash
-python train_detector.py
-```
-
-2. Run evaluations:
-```bash
-python -m src.models.detector evaluate \
-  --model-path models/detector_rl \
-  --test-file data/processed/test.csv
-```
+The detector can be trained and evaluated using our provided scripts. Configuration settings are managed through `config/config.yaml`.
 
 ### HPC Deployment
 
-For large-scale training and evaluation, use the SLURM scripts:
+For large-scale training and evaluation, we provide SLURM scripts in the `slurm_scripts/` directory. These scripts are configured for high-performance computing environments and handle:
 
-```bash
-# Generate datasets
-sbatch slurm_scripts/run_MATH_train_test.slurm
+- Dataset generation
+- Model training
+- Evaluation across different mathematical domains
 
-# Train RL detector
-sbatch slurm_scripts/run_train_RL.slurm
+Refer to `slurm_scripts/README.md` for detailed HPC deployment instructions.
 
-# Run evaluations
-sbatch slurm_scripts/run_eval_naturalproofs.slurm
-```
+## Analysis
 
-See `slurm_scripts/README.md` for detailed HPC instructions.
+We provide Jupyter notebooks for detailed analysis:
+- `MATH_evaluation_analyses.ipynb`: Comprehensive evaluation on the MATH dataset
+- `NaturalProofs_evaluation_analyses.ipynb`: Analysis of performance on mathematical proofs
 
-## 📊 Results
-
-Analysis notebooks:
-- `MATH_evaluation_analyses.ipynb`: MATH dataset results
-- `NaturalProofs_evaluation_analyses.ipynb`: NaturalProofs results
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/name`)
@@ -111,7 +102,7 @@ Analysis notebooks:
 4. Push branch (`git push origin feature/name`)
 5. Create Pull Request
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see LICENSE file for details.
 
