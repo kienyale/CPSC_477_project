@@ -9,7 +9,7 @@ A state-of-the-art detector for identifying AI-generated mathematical solutions,
 ## 🎯 Key Features
 
 - **Advanced Detection**: Uses adversarial RL to identify AI-generated math solutions with high accuracy
-- **Robust Training**: Trained on both MATH and NaturalProofs datasets for comprehensive coverage
+- **Robust Training**: Trained partially on MATH and evaluated on MATH and NaturalProofs datasets for generalizability
 - **Dual Model Architecture**: Combines SFT (Supervised Fine-Tuning) and RL-based detection
 - **HPC Ready**: Optimized for high-performance computing environments
 - **Comprehensive Evaluation**: Extensive testing on multiple mathematical domains
@@ -100,8 +100,8 @@ See `slurm_scripts/README.md` for detailed HPC instructions.
 ## 📊 Results
 
 Analysis notebooks:
-- `MATH_evaluation_analyses.ipynb`: MATH dataset results
-- `NaturalProofs_evaluation_analyses.ipynb`: NaturalProofs results
+- `MATH_evaluation_analyses.ipynb`: MATH dataset evaluation results
+- `NaturalProofs_evaluation_analyses.ipynb`: NaturalProofs evaluation results
 
 ## 🤝 Contributing
 
