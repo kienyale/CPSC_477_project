@@ -1,8 +1,20 @@
-# AI-Generated Math Solution Detector
+# 🤖 AI-Generated Math Solution Detector
 
-This project implements an adversarial RL-based detector for identifying AI-generated math solutions. The detector is trained on the MATH dataset and evaluated on both MATH and NaturalProofs datasets.
+A state-of-the-art detector for identifying AI-generated mathematical solutions, trained using adversarial reinforcement learning techniques.
 
-## Project Structure
+## 📄 Research Paper
+
+[Adversarial Reinforcement Learning based Detection of AI Generated Math Solutions](Adversarial_Reinforcement_Learning_based_Detection_of_AI_Generated_Math_Solutions.pdf)
+
+## 🎯 Key Features
+
+- **Advanced Detection**: Uses adversarial RL to identify AI-generated math solutions with high accuracy
+- **Robust Training**: Trained on both MATH and NaturalProofs datasets for comprehensive coverage
+- **Dual Model Architecture**: Combines SFT (Supervised Fine-Tuning) and RL-based detection
+- **HPC Ready**: Optimized for high-performance computing environments
+- **Comprehensive Evaluation**: Extensive testing on multiple mathematical domains
+
+## 🏗️ Project Structure
 
 ```
 .
@@ -24,39 +36,27 @@ This project implements an adversarial RL-based detector for identifying AI-gene
 └── requirements.txt      # Python dependencies
 ```
 
-## Installation
+## 🚀 Quick Start
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/amyyhwang3/CPSC_477_project.git
+git clone https://github.com/kienyale/CPSC_477_project.git
 cd CPSC_477_project
 ```
 
-2. Create and activate virtual environment:
+2. Set up environment:
 ```bash
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # or
 .\venv\Scripts\activate  # Windows
-```
 
-3. Install dependencies:
-```bash
 pip install -r requirements.txt
 ```
 
-## Usage
+3. Configure settings in `config/config.yaml`
 
-### Local Development
-
-1. Configure settings in `config/config.yaml`
-
-2. Train the detector:
-```bash
-python train_detector.py
-```
-
-3. Run inference:
+4. Run inference:
 ```bash
 python -m src.models.detector predict \
   --model-path models/detector_rl \
@@ -64,9 +64,25 @@ python -m src.models.detector predict \
   --output-file detector_inference.npz
 ```
 
-### Running on HPC
+## 💻 Usage
 
-For large-scale training and evaluation, use the SLURM scripts in `slurm_scripts/`:
+### Local Development
+
+1. Train the detector:
+```bash
+python train_detector.py
+```
+
+2. Run evaluations:
+```bash
+python -m src.models.detector evaluate \
+  --model-path models/detector_rl \
+  --test-file data/processed/test.csv
+```
+
+### HPC Deployment
+
+For large-scale training and evaluation, use the SLURM scripts:
 
 ```bash
 # Generate datasets
@@ -79,26 +95,15 @@ sbatch slurm_scripts/run_train_RL.slurm
 sbatch slurm_scripts/run_eval_naturalproofs.slurm
 ```
 
-See `slurm_scripts/README.md` for detailed instructions on running HPC jobs.
+See `slurm_scripts/README.md` for detailed HPC instructions.
 
-## Data
-
-- **MATH Dataset**: Mathematical problems and solutions
-- **NaturalProofs**: Mathematical proofs for evaluation
-- **Processed Data**: Aligned datasets with human/AI labels
-
-## Models
-
-1. **SFT Detector**: Initial supervised fine-tuned model
-2. **RL Detector**: Adversarially trained with RL for robustness
-
-## Results
+## 📊 Results
 
 Analysis notebooks:
 - `MATH_evaluation_analyses.ipynb`: MATH dataset results
 - `NaturalProofs_evaluation_analyses.ipynb`: NaturalProofs results
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/name`)
@@ -106,7 +111,7 @@ Analysis notebooks:
 4. Push branch (`git push origin feature/name`)
 5. Create Pull Request
 
-## License
+## 📝 License
 
 This project is licensed under the MIT License - see LICENSE file for details.
 
