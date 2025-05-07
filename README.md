@@ -12,16 +12,17 @@ For complete details about our methodology, experiments, and results, please ref
 
 Our novel RL-Detector demonstrates superior performance and robustness compared to baseline methods:
 
-### Performance Across Mathematical Topics
+### Performance Analysis on MATH test set
+![Sensitivity Analysis](results/sensitivity_analysis.png)
+
+### Generalizibility to Proof Domain (NaturalProofs evaluation)
 ![NaturalProofs Analysis](results/naturalproofs_analysis.png)
 
-### Sensitivity Analysis
-![Sensitivity Analysis](results/sensitivity_analysis.png)
 
 ### Key Findings
 
-- **Difficulty Robustness**: Maintains 85% accuracy on Level 5 problems (vs 78% for SFT-LoRA)
-- **Subject Coverage**: Achieves uniformly high accuracy across mathematical subjects, with 10-12 percentage point improvements in challenging areas like Precalculus
+- **Difficulty Robustness**: Maintains 85% accuracy on the hardest MATH problems (vs 78% for SFT-LoRA)
+- **Subject Coverage**: Achieves uniformly high accuracy across mathematical subjects, with 10-12 percentage point improvements in topics like Precalculus
 - **Reduced False Positives**: Decreases false-positive rate from 13-17% to 8-11% on AI outputs
 - **Solution Verification**: 96% accuracy on verifiably correct solutions, 91% on incorrect ones
 
@@ -29,8 +30,8 @@ Our novel RL-Detector demonstrates superior performance and robustness compared 
 
 Our method combines:
 1. Supervised Fine-Tuning with LoRA (SFT-LoRA) for initial training
-2. Adversarial Reinforcement Learning for robustness enhancement
-3. Specialized detection mechanisms for mathematical reasoning verification
+2. Supervised Fine-Tuning a "humanizer" model to help with detector training
+3. A novel Adversarial Reinforcement Learning method for robust detection
 
 ## Project Structure
 
