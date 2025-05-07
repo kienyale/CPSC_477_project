@@ -1,6 +1,6 @@
 # 🤖 AI-Generated Math Solution Detector
 
-A state-of-the-art detector for identifying AI-generated mathematical solutions, trained using adversarial reinforcement learning techniques.
+A state-of-the-art detector for identifying AI-generated mathematical solutions, trained using Adversarial Reinforcement Learning.
 
 ## 📄 Research Paper
 
